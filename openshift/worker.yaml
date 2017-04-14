@@ -39,7 +39,7 @@ objects:
           deploymentconfig: voting-app-worker
       spec:
         containers:
-        - image: 172.30.40.226:5000/keynote/voting-app-worker@sha256:68bca498348b16beb252e947510c10a2f213b237e246e6756aa41f51b73c833a
+        - image: ""
           env:
             - name: JAVA_APP_JAR
               value: worker-jar-with-dependencies.jar
@@ -79,7 +79,6 @@ objects:
         from:
           kind: ImageStreamTag
           name: voting-app-worker:latest
-          namespace: keynote
       type: ImageChange
   status: {}
 - apiVersion: v1
@@ -104,3 +103,70 @@ objects:
     type: ClusterIP
   status:
     loadBalancer: {}
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    name: voting-app-worker
+    labels:
+      build: voting-app-worker
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+  spec:
+    triggers:
+      - type: GitHub
+        github:
+          secret: fU5nPZRCauxd7GE829Ou
+      - type: Generic
+        generic:
+          secret: 1VDBJnR-P9dsEpo7SI8h
+      - type: ConfigChange
+      - type: ImageChange
+    runPolicy: Serial
+    source:
+      type: Git
+      git:
+        uri: 'https://github.com/containers-prague/demo-worker/'
+      contextDir: worker
+    strategy:
+      type: Source
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: 's2i-java:latest'
+    output:
+      to:
+        kind: ImageStreamTag
+        name: 'voting-app-worker:latest'
+    resources: {}
+    postCommit: {}
+    nodeSelector: null
+  status: {}
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: s2i-java
+    labels:
+      build: voting-app-worker
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+  spec:
+    tags:
+      - name: latest
+        annotations:
+          openshift.io/imported-from: fabric8/s2i-java
+        from:
+          kind: DockerImage
+          name: fabric8/s2i-java
+        generation: 2
+        importPolicy: {}
+  status: {}
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: voting-app-worker
+    labels:
+      build: voting-app-worker
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+  spec: {}
+  status: {}
