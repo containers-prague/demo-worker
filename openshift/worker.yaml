@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: vote-app-worker
+objects:
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: voting-app-worker
+    name: voting-app-worker
+  spec:
+    replicas: 1
+    selector:
+      app: voting-app-worker
+      deploymentconfig: voting-app-worker
+    strategy:
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/container.voting-app-worker.image.entrypoint: '["/usr/local/s2i/run"]'
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: voting-app-worker
+          deploymentconfig: voting-app-worker
+      spec:
+        containers:
+        - image: 172.30.40.226:5000/keynote/voting-app-worker@sha256:68bca498348b16beb252e947510c10a2f213b237e246e6756aa41f51b73c833a
+          env:
+            - name: JAVA_APP_JAR
+              value: worker-jar-with-dependencies.jar
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "redis"
+                  key: database-password
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: "db"
+                  key: user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "db"
+                  key: password
+          imagePullPolicy: Always
+          name: voting-app-worker
+          ports:
+          - containerPort: 8778
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - voting-app-worker
+        from:
+          kind: ImageStreamTag
+          name: voting-app-worker:latest
+          namespace: keynote
+      type: ImageChange
+  status: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: voting-app-worker
+    name: voting-app-worker
+  spec:
+    ports:
+    - name: 8778-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    selector:
+      app: voting-app-worker
+      deploymentconfig: voting-app-worker
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
